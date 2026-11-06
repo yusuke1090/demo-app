@@ -43,6 +43,19 @@ void main() {
       );
     });
 
+    test('the latest temperature is the current value', () async {
+      final detail = await source.soilDetail('soil-3', hours: 24);
+      expect(
+        detail.history.last.temperature,
+        closeTo(detail.sensor.temperature!, 0.001),
+      );
+    });
+
+    test('a sensor without temperature has no temperature history', () async {
+      final detail = await source.soilDetail('soil-4', hours: 24);
+      expect(detail.history.every((p) => p.temperature == null), isTrue);
+    });
+
     test('the latest soil point is the current value', () async {
       final detail = await source.soilDetail('soil-2', hours: 24);
       expect(detail.history, hasLength(25));
@@ -69,17 +82,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('確認すること'), findsOneWidget);
     expect(find.textContaining('発情の候補'), findsOneWidget);
-    expect(find.text('1 / 4'), findsNothing);
-    expect(find.text('2 / 4'), findsOneWidget);
+    expect(find.text('デモアプリ'), findsOneWidget);
+    // 水分と牛が 2 / 4、温度が 2 / 3
+    expect(find.text('2 / 4'), findsNWidgets(2));
+    expect(find.text('2 / 3'), findsOneWidget);
   });
 
-  testWidgets('tabs open the soil and cow lists', (tester) async {
+  testWidgets('tabs open moisture, temperature and cows separately', (
+    tester,
+  ) async {
     await tester.pumpWidget(FarmApp(state: AppState()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('土'));
+    await tester.tap(find.text('水分').last);
     await tester.pumpAndSettle();
-    expect(find.text('畑B'), findsOneWidget);
-    await tester.tap(find.text('牛'));
+    expect(find.text('土の水分'), findsOneWidget);
+    expect(find.text('24.2%'), findsOneWidget);
+    await tester.tap(find.text('温度').last);
+    await tester.pumpAndSettle();
+    expect(find.text('土の温度'), findsOneWidget);
+    expect(find.text('20.8℃'), findsOneWidget);
+    expect(find.textContaining('牧草地'), findsOneWidget);
+    await tester.tap(find.text('牛').last);
     await tester.pumpAndSettle();
     expect(find.text('101 ハナ'), findsOneWidget);
   });
@@ -91,6 +114,18 @@ void main() {
     await tester.tap(find.text('24時間'));
     await tester.pumpAndSettle();
     expect(find.text('畑A（ハウス東）'), findsOneWidget);
+  });
+
+  testWidgets('temperature detail shows the temperature', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        const SoilDetailScreen(id: 'soil-3', metric: SoilMetric.temperature),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('土の温度の記録'), findsOneWidget);
+    expect(find.text('8.6℃'), findsOneWidget);
+    expect(find.text('低温'), findsOneWidget);
   });
 
   testWidgets('cow detail says a flag is not a diagnosis', (tester) async {
@@ -106,7 +141,9 @@ void main() {
   });
 
   testWidgets('a failed load shows a message and a retry', (tester) async {
-    await tester.pumpWidget(_app(const SoilScreen(), _FailingSource()));
+    await tester.pumpWidget(
+      _app(const SoilScreen(metric: SoilMetric.moisture), _FailingSource()),
+    );
     await tester.pumpAndSettle();
     expect(find.text('受信機に接続できません'), findsOneWidget);
     expect(find.text('もう一度'), findsOneWidget);

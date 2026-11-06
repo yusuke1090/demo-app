@@ -12,7 +12,7 @@ class DemoDataSource implements DataSource {
   static const _soil = [
     _SoilSpec('soil-1', '畑A', 'ハウス東', 42.5, 21.3, 86, 2, 30, 60, 0),
     _SoilSpec('soil-2', '畑B', 'ハウス西', 24.2, 20.8, 71, 4, 30, 60, 0),
-    _SoilSpec('soil-3', '畑C', '露地 南側', 55.8, 17.6, 64, 7, 30, 60, 0),
+    _SoilSpec('soil-3', '畑C', '露地 南側', 55.8, 8.6, 64, 7, 30, 60, 0),
     _SoilSpec('soil-4', '牧草地', '北の区画', 38.0, null, 12, 0, 25, 55, 3),
   ];
 
@@ -47,9 +47,23 @@ class DemoDataSource implements DataSource {
               : spec.moisture +
                     (t % 72) * 0.2 +
                     0.6 * sin(t * 0.7 + spec.moisture),
+          _temperature(spec, sensor.updatedAt, t),
         ),
     ];
     return SoilDetail(sensor, history);
+  }
+
+  /// 今の値を基準に、昼に上がり夜に下がる形にする。
+  static double? _temperature(
+    _SoilSpec spec,
+    DateTime updatedAt,
+    int hoursAgo,
+  ) {
+    final current = spec.temperature;
+    if (current == null) return null;
+    double wave(DateTime t) => 2.5 * sin((t.hour - 8) / 24 * 2 * pi);
+    final time = updatedAt.subtract(Duration(hours: hoursAgo));
+    return current + wave(time) - wave(updatedAt);
   }
 
   @override
@@ -191,6 +205,21 @@ class DemoDataSource implements DataSource {
         ),
       );
     }
+    for (final s in await soilSensors()) {
+      final status = s.temperatureStatusAt(now);
+      if (status != SoilStatus.cold && status != SoilStatus.hot) continue;
+      alerts.add(
+        FarmAlert(
+          level: AlertLevel.warning,
+          kind: 'temperature',
+          targetId: s.id,
+          title: '${s.name}: ${status.label}',
+          message:
+              '${s.location}の土の温度は ${s.temperature!.toStringAsFixed(1)}℃ です',
+          time: s.updatedAt,
+        ),
+      );
+    }
     return alerts;
   }
 }
@@ -230,6 +259,8 @@ class _SoilSpec {
     updatedAt: now.subtract(Duration(hours: hoursAgo, minutes: minutesAgo)),
     dryBelow: dryBelow,
     wetAbove: wetAbove,
+    coldBelow: 10,
+    hotAbove: 30,
   );
 }
 

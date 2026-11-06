@@ -22,6 +22,8 @@ enum SoilStatus {
   dry('乾燥'),
   good('適正'),
   wet('過湿'),
+  cold('低温'),
+  hot('高温'),
   offline('通信なし');
 
   const SoilStatus(this.label);
@@ -44,6 +46,8 @@ class SoilSensor {
     required this.updatedAt,
     required this.dryBelow,
     required this.wetAbove,
+    required this.coldBelow,
+    required this.hotAbove,
   });
 
   final String id;
@@ -66,10 +70,28 @@ class SoilSensor {
   /// この値より上なら過湿
   final double wetAbove;
 
+  /// この温度より下なら低温
+  final double coldBelow;
+
+  /// この温度より上なら高温
+  final double hotAbove;
+
+  /// 水分の状態
   SoilStatus statusAt(DateTime now) {
     if (now.difference(updatedAt) > offlineAfter) return SoilStatus.offline;
     if (moisture < dryBelow) return SoilStatus.dry;
     if (moisture > wetAbove) return SoilStatus.wet;
+    return SoilStatus.good;
+  }
+
+  /// 温度の状態
+  SoilStatus temperatureStatusAt(DateTime now) {
+    final value = temperature;
+    if (value == null || now.difference(updatedAt) > offlineAfter) {
+      return SoilStatus.offline;
+    }
+    if (value < coldBelow) return SoilStatus.cold;
+    if (value > hotAbove) return SoilStatus.hot;
     return SoilStatus.good;
   }
 
@@ -83,17 +105,23 @@ class SoilSensor {
     updatedAt: DateTime.parse(j['updated_at'] as String).toLocal(),
     dryBelow: (j['dry_below'] as num).toDouble(),
     wetAbove: (j['wet_above'] as num).toDouble(),
+    coldBelow: (j['cold_below'] as num).toDouble(),
+    hotAbove: (j['hot_above'] as num).toDouble(),
   );
 }
 
 class SoilPoint {
-  const SoilPoint(this.time, this.moisture);
+  const SoilPoint(this.time, this.moisture, this.temperature);
   final DateTime time;
   final double moisture;
+
+  /// 温度を測らないセンサーでは null
+  final double? temperature;
 
   factory SoilPoint.fromJson(Map<String, dynamic> j) => SoilPoint(
     DateTime.parse(j['time'] as String).toLocal(),
     (j['moisture'] as num).toDouble(),
+    (j['temperature'] as num?)?.toDouble(),
   );
 }
 
@@ -191,7 +219,7 @@ class FarmAlert {
 
   final AlertLevel level;
 
-  /// 'soil' か 'cow'
+  /// 'soil'（水分）か 'temperature'（土の温度）か 'cow'
   final String kind;
   final String targetId;
   final String title;

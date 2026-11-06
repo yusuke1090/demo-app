@@ -1,13 +1,52 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
-import '../data/data_source.dart';
 import '../format.dart';
 import '../models.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
 
+/// 土のセンサーで見る項目。水分と温度を別のタブで見る。
+enum SoilMetric {
+  moisture('土の水分', '%', 0, 100, 20),
+  temperature('土の温度', '℃', 0, 40, 10);
+
+  const SoilMetric(
+    this.title,
+    this.unit,
+    this.scaleMin,
+    this.scaleMax,
+    this.interval,
+  );
+
+  final String title;
+  final String unit;
+
+  /// メーターとグラフの基本の範囲
+  final double scaleMin;
+  final double scaleMax;
+  final double interval;
+
+  double? current(SoilSensor s) =>
+      this == moisture ? s.moisture : s.temperature;
+
+  double? ofPoint(SoilPoint p) => this == moisture ? p.moisture : p.temperature;
+
+  double low(SoilSensor s) => this == moisture ? s.dryBelow : s.coldBelow;
+
+  double high(SoilSensor s) => this == moisture ? s.wetAbove : s.hotAbove;
+
+  SoilStatus status(SoilSensor s, DateTime now) =>
+      this == moisture ? s.statusAt(now) : s.temperatureStatusAt(now);
+
+  String text(double value) => '${value.toStringAsFixed(1)}$unit';
+}
+
 class SoilScreen extends StatelessWidget {
-  const SoilScreen({super.key});
+  const SoilScreen({super.key, required this.metric});
+
+  final SoilMetric metric;
 
   @override
   Widget build(BuildContext context) {
@@ -15,11 +54,18 @@ class SoilScreen extends StatelessWidget {
       load: (source) => source.soilSensors(),
       builder: (context, sensors) {
         if (sensors.isEmpty) return [const Text('センサーがまだ登録されていません')];
+        final shown = sensors.where((s) => metric.current(s) != null);
+        final hidden = sensors.where((s) => metric.current(s) == null);
         return [
-          for (final s in sensors)
+          for (final s in shown)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _SensorCard(sensor: s),
+              child: _SensorCard(sensor: s, metric: metric),
+            ),
+          if (hidden.isNotEmpty)
+            MutedText(
+              '${hidden.map((s) => s.name).join('、')}は'
+              '${metric.title.substring(2)}を測っていません',
             ),
         ];
       },
@@ -28,9 +74,10 @@ class SoilScreen extends StatelessWidget {
 }
 
 class _SensorCard extends StatelessWidget {
-  const _SensorCard({required this.sensor});
+  const _SensorCard({required this.sensor, required this.metric});
 
   final SoilSensor sensor;
+  final SoilMetric metric;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +87,7 @@ class _SensorCard extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => SoilDetailScreen(id: sensor.id),
+            builder: (_) => SoilDetailScreen(id: sensor.id, metric: metric),
           ),
         ),
         child: Padding(
@@ -59,16 +106,16 @@ class _SensorCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  StatusChip.soil(sensor.statusAt(now)),
+                  StatusChip.soil(metric.status(sensor, now)),
                   const SizedBox(width: 12),
                   Text(
-                    '${sensor.moisture.toStringAsFixed(1)}%',
+                    metric.text(metric.current(sensor)!),
                     style: theme.textTheme.headlineSmall,
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-              _RangeMeter(sensor: sensor),
+              _RangeMeter(sensor: sensor, metric: metric),
               const SizedBox(height: 8),
               MutedText(
                 '電池 ${sensor.battery}% ・ ${agoText(sensor.updatedAt, now)}に更新',
@@ -81,11 +128,12 @@ class _SensorCard extends StatelessWidget {
   }
 }
 
-/// 0〜100% の中で、今の値と適正の範囲を示す。
+/// メーターの範囲の中で、今の値と適正の範囲を示す。
 class _RangeMeter extends StatelessWidget {
-  const _RangeMeter({required this.sensor});
+  const _RangeMeter({required this.sensor, required this.metric});
 
   final SoilSensor sensor;
+  final SoilMetric metric;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +141,11 @@ class _RangeMeter extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        double x(double percent) => width * percent.clamp(0, 100) / 100;
+        double x(double value) {
+          final span = metric.scaleMax - metric.scaleMin;
+          return width * ((value - metric.scaleMin) / span).clamp(0.0, 1.0);
+        }
+
         return SizedBox(
           height: 14,
           child: Stack(
@@ -111,8 +163,8 @@ class _RangeMeter extends StatelessWidget {
                 ),
               ),
               Positioned(
-                left: x(sensor.dryBelow),
-                width: x(sensor.wetAbove) - x(sensor.dryBelow),
+                left: x(metric.low(sensor)),
+                width: x(metric.high(sensor)) - x(metric.low(sensor)),
                 top: 4,
                 height: 6,
                 child: ColoredBox(
@@ -120,7 +172,7 @@ class _RangeMeter extends StatelessWidget {
                 ),
               ),
               Positioned(
-                left: (x(sensor.moisture) - 2).clamp(0, width - 4),
+                left: (x(metric.current(sensor)!) - 2).clamp(0, width - 4),
                 width: 4,
                 top: 0,
                 height: 14,
@@ -140,9 +192,14 @@ class _RangeMeter extends StatelessWidget {
 }
 
 class SoilDetailScreen extends StatefulWidget {
-  const SoilDetailScreen({super.key, required this.id});
+  const SoilDetailScreen({
+    super.key,
+    required this.id,
+    this.metric = SoilMetric.moisture,
+  });
 
   final String id;
+  final SoilMetric metric;
 
   @override
   State<SoilDetailScreen> createState() => _SoilDetailScreenState();
@@ -151,15 +208,16 @@ class SoilDetailScreen extends StatefulWidget {
 class _SoilDetailScreenState extends State<SoilDetailScreen> {
   int _hours = 168;
 
+  SoilMetric get _metric => widget.metric;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('土の水分の記録')),
+      appBar: AppBar(title: Text('${_metric.title}の記録')),
       body: LoadView<SoilDetail>(
         key: ValueKey(_hours),
-        load: (DataSource source) =>
-            source.soilDetail(widget.id, hours: _hours),
-        builder: (context, data) => _body(context, data),
+        load: (source) => source.soilDetail(widget.id, hours: _hours),
+        builder: _body,
       ),
     );
   }
@@ -168,28 +226,23 @@ class _SoilDetailScreenState extends State<SoilDetailScreen> {
     final theme = Theme.of(context);
     final s = data.sensor;
     final now = DateTime.now();
+    final value = _metric.current(s);
+    final points = data.history
+        .where((p) => _metric.ofPoint(p) != null)
+        .toList();
+    final values = [for (final p in points) _metric.ofPoint(p)!];
     return [
       Text('${s.name}（${s.location}）', style: theme.textTheme.titleMedium),
       const SizedBox(height: 4),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            '${s.moisture.toStringAsFixed(1)}%',
-            style: theme.textTheme.displaySmall,
-          ),
-          const SizedBox(width: 12),
-          StatusChip.soil(s.statusAt(now)),
-        ],
-      ),
-      MutedText(
-        [
-          if (s.temperature != null)
-            '土の温度 ${s.temperature!.toStringAsFixed(1)}℃',
-          '電池 ${s.battery}%',
-          '${agoText(s.updatedAt, now)}に更新',
-        ].join(' ・ '),
-      ),
+      if (value != null)
+        Row(
+          children: [
+            Text(_metric.text(value), style: theme.textTheme.displaySmall),
+            const SizedBox(width: 12),
+            StatusChip.soil(_metric.status(s, now)),
+          ],
+        ),
+      MutedText('電池 ${s.battery}% ・ ${agoText(s.updatedAt, now)}に更新'),
       const SizedBox(height: 16),
       SegmentedButton<int>(
         segments: const [
@@ -200,32 +253,42 @@ class _SoilDetailScreenState extends State<SoilDetailScreen> {
         onSelectionChanged: (v) => setState(() => _hours = v.first),
       ),
       const SizedBox(height: 16),
-      if (data.history.length < 2)
+      if (points.length < 2)
         const Text('グラフにするだけの記録がまだありません')
       else ...[
-        MoistureChart(
-          points: data.history,
-          dryBelow: s.dryBelow,
-          wetAbove: s.wetAbove,
+        SoilLineChart(
+          times: [for (final p in points) p.time],
+          values: values,
+          low: _metric.low(s),
+          high: _metric.high(s),
+          minY: _floor(min(_metric.scaleMin, values.reduce(min))),
+          maxY: _ceil(max(_metric.scaleMax * 0.8, values.reduce(max))),
+          interval: _metric.interval,
+          unit: _metric.unit,
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 14,
-          children: [
-            LegendItem(
-              color: theme.colorScheme.primary.withValues(alpha: 0.25),
-              label: '適正の範囲 ${s.dryBelow.round()}〜${s.wetAbove.round()}%',
-            ),
-          ],
+        LegendItem(
+          color: theme.colorScheme.primary.withValues(alpha: 0.25),
+          label:
+              '適正の範囲 ${_metric.low(s).round()}〜'
+              '${_metric.high(s).round()}${_metric.unit}',
         ),
         DataTableTile(
-          headers: const ['日時', '水分'],
+          headers: ['日時', _metric.title.substring(2)],
           rows: [
-            for (final p in data.history.reversed.take(48))
-              [dateTimeText(p.time), '${p.moisture.toStringAsFixed(1)}%'],
+            for (
+              var i = points.length - 1;
+              i >= 0 && i >= points.length - 48;
+              i--
+            )
+              [dateTimeText(points[i].time), _metric.text(values[i])],
           ],
         ),
       ],
     ];
   }
+
+  double _floor(double v) => (v / _metric.interval).floor() * _metric.interval;
+
+  double _ceil(double v) => (v / _metric.interval).ceil() * _metric.interval;
 }

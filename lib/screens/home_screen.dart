@@ -40,28 +40,43 @@ class HomeScreen extends StatelessWidget {
         final goodSoil = data.sensors
             .where((s) => s.statusAt(now) == SoilStatus.good)
             .length;
+        final withTemperature = data.sensors.where(
+          (s) => s.temperature != null,
+        );
+        final goodTemperature = withTemperature
+            .where((s) => s.temperatureStatusAt(now) == SoilStatus.good)
+            .length;
         final flagged = data.cows.where((c) => c.flag != null).length;
         return [
           if (demo) const _DemoBanner(),
           Row(
+            spacing: 8,
             children: [
               Expanded(
                 child: _SummaryTile(
                   icon: Icons.water_drop_outlined,
-                  title: '土の水分',
+                  title: '水分',
                   value: '$goodSoil / ${data.sensors.length}',
-                  note: '適正のセンサー',
+                  note: '適正',
                   onTap: () => onOpenTab(1),
                 ),
               ),
-              const SizedBox(width: 12),
+              Expanded(
+                child: _SummaryTile(
+                  icon: Icons.thermostat_outlined,
+                  title: '温度',
+                  value: '$goodTemperature / ${withTemperature.length}',
+                  note: '適正',
+                  onTap: () => onOpenTab(2),
+                ),
+              ),
               Expanded(
                 child: _SummaryTile(
                   icon: Icons.pets_outlined,
-                  title: '牛の行動',
-                  value: '$flagged 頭',
-                  note: '${data.cows.length}頭のうち確認の候補',
-                  onTap: () => onOpenTab(2),
+                  title: '牛',
+                  value: '$flagged / ${data.cows.length}',
+                  note: '確認の候補',
+                  onTap: () => onOpenTab(3),
                 ),
               ),
             ],
@@ -137,7 +152,7 @@ class _SummaryTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -149,7 +164,7 @@ class _SummaryTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(value, style: theme.textTheme.headlineMedium),
+              Text(value, style: theme.textTheme.headlineSmall),
               MutedText(note),
             ],
           ),
@@ -179,9 +194,14 @@ class _AlertCard extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => alert.kind == 'cow'
-                ? CowDetailScreen(id: alert.targetId)
-                : SoilDetailScreen(id: alert.targetId),
+            builder: (_) => switch (alert.kind) {
+              'cow' => CowDetailScreen(id: alert.targetId),
+              'temperature' => SoilDetailScreen(
+                id: alert.targetId,
+                metric: SoilMetric.temperature,
+              ),
+              _ => SoilDetailScreen(id: alert.targetId),
+            },
           ),
         ),
       ),

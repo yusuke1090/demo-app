@@ -36,6 +36,7 @@ void main() {
     expect(sensors.last.statusAt(DateTime.now()), SoilStatus.offline);
     final soil = await api.soilDetail(sensors.first.id, hours: 24);
     expect(soil.history, hasLength(25));
+    expect(soil.history.last.temperature, sensors.first.temperature);
 
     final cows = await api.cows();
     expect(cows, hasLength(4));
@@ -44,7 +45,10 @@ void main() {
     expect(cow.hours, hasLength(24));
 
     final alerts = await api.alerts();
-    expect(alerts.map((a) => a.kind), containsAll(['cow', 'soil']));
+    expect(
+      alerts.map((a) => a.kind),
+      containsAll(['cow', 'soil', 'temperature']),
+    );
   });
 
   test('an unknown id becomes a readable error', () {

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -61,27 +59,34 @@ FlTitlesData _titles(
   );
 }
 
-/// 土の水分の折れ線。適正の範囲を帯で示す。
-class MoistureChart extends StatelessWidget {
-  const MoistureChart({
+/// 土の水分や温度の折れ線。適正の範囲を帯で示す。
+class SoilLineChart extends StatelessWidget {
+  const SoilLineChart({
     super.key,
-    required this.points,
-    required this.dryBelow,
-    required this.wetAbove,
+    required this.times,
+    required this.values,
+    required this.low,
+    required this.high,
+    required this.minY,
+    required this.maxY,
+    required this.interval,
+    required this.unit,
   });
 
-  final List<SoilPoint> points;
-  final double dryBelow;
-  final double wetAbove;
+  final List<DateTime> times;
+  final List<double> values;
+
+  /// 適正の範囲
+  final double low;
+  final double high;
+  final double minY;
+  final double maxY;
+  final double interval;
+  final String unit;
 
   @override
   Widget build(BuildContext context) {
-    final longRange = points.length > 48;
-    final color = lineColor(context);
-    final top = max(
-      80.0,
-      (points.map((p) => p.moisture).reduce(max) / 20).ceil() * 20.0,
-    );
+    final longRange = times.length > 48;
     final band = Theme.of(context).colorScheme.primary.withValues(alpha: 0.12);
     return Container(
       height: 220,
@@ -89,28 +94,24 @@ class MoistureChart extends StatelessWidget {
       child: LineChart(
         LineChartData(
           minX: 0,
-          maxX: (points.length - 1).toDouble(),
-          minY: 0,
-          maxY: top,
-          gridData: _grid(context, 20),
+          maxX: (times.length - 1).toDouble(),
+          minY: minY,
+          maxY: maxY,
+          gridData: _grid(context, interval),
           borderData: FlBorderData(show: false),
           rangeAnnotations: RangeAnnotations(
             horizontalRangeAnnotations: [
-              HorizontalRangeAnnotation(
-                y1: dryBelow,
-                y2: wetAbove,
-                color: band,
-              ),
+              HorizontalRangeAnnotation(y1: low, y2: high, color: band),
             ],
           ),
           titlesData: _titles(
             context,
-            yInterval: 20,
-            yUnit: '%',
+            yInterval: interval,
+            yUnit: unit,
             xInterval: longRange ? 24 : 6,
             xLabel: (i) {
-              if (i < 0 || i >= points.length) return '';
-              final t = points[i].time;
+              if (i < 0 || i >= times.length) return '';
+              final t = times[i];
               return longRange ? dateText(t) : '${t.hour}時';
             },
           ),
@@ -118,11 +119,12 @@ class MoistureChart extends StatelessWidget {
             touchTooltipData: LineTouchTooltipData(
               getTooltipColor: (_) =>
                   Theme.of(context).colorScheme.inverseSurface,
+              fitInsideHorizontally: true,
               getTooltipItems: (spots) => [
                 for (final s in spots)
                   LineTooltipItem(
-                    '${dateTimeText(points[s.x.round()].time)}\n'
-                    '${s.y.toStringAsFixed(1)}%',
+                    '${dateTimeText(times[s.x.round()])}\n'
+                    '${s.y.toStringAsFixed(1)}$unit',
                     _tooltipStyle(context),
                   ),
               ],
@@ -131,12 +133,11 @@ class MoistureChart extends StatelessWidget {
           lineBarsData: [
             LineChartBarData(
               spots: [
-                for (var i = 0; i < points.length; i++)
-                  FlSpot(i.toDouble(), points[i].moisture),
+                for (var i = 0; i < values.length; i++)
+                  FlSpot(i.toDouble(), values[i]),
               ],
-              color: color,
+              color: lineColor(context),
               barWidth: 2,
-              isCurved: false,
               dotData: const FlDotData(show: false),
             ),
           ],

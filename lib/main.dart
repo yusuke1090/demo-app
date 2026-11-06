@@ -32,7 +32,7 @@ class FarmApp extends StatelessWidget {
     return AppScope(
       state: state,
       child: MaterialApp(
-        title: '農場モニター',
+        title: 'デモアプリ',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(Brightness.light, fontFamily: fontFamily),
         darkTheme: buildTheme(Brightness.dark, fontFamily: fontFamily),
@@ -63,14 +63,15 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    const titles = ['農場モニター', '土の水分', '牛の行動', '設定'];
+    const titles = ['デモアプリ', '土の水分', '土の温度', '牛の行動', '設定'];
     return Scaffold(
       appBar: AppBar(title: Text(titles[_tab])),
       body: IndexedStack(
         index: _tab,
         children: [
           HomeScreen(onOpenTab: _select),
-          const SoilScreen(),
+          const SoilScreen(metric: SoilMetric.moisture),
+          const SoilScreen(metric: SoilMetric.temperature),
           const CowsScreen(),
           const SettingsScreen(),
         ],
@@ -82,7 +83,11 @@ class _AppShellState extends State<AppShell> {
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'ホーム'),
           NavigationDestination(
             icon: Icon(Icons.water_drop_outlined),
-            label: '土',
+            label: '水分',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.thermostat_outlined),
+            label: '温度',
           ),
           NavigationDestination(icon: Icon(Icons.pets_outlined), label: '牛'),
           NavigationDestination(

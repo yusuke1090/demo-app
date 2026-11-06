@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 受信機は同じ Wi-Fi の中の http で動くので、平文の通信を許可する -->
     <application
-        android:label="農場モニター"
+        android:label="デモアプリ"
         android:usesCleartextTraffic="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

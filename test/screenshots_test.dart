@@ -78,9 +78,23 @@ void main() {
     (t) => shot(t, 'soil-detail', const SoilDetailScreen(id: 'soil-2')),
   );
   testWidgets(
+    'temperature',
+    skip: skip,
+    (t) => shot(t, 'temperature', const AppShell(initialTab: 2)),
+  );
+  testWidgets(
+    'temperature-detail',
+    skip: skip,
+    (t) => shot(
+      t,
+      'temperature-detail',
+      const SoilDetailScreen(id: 'soil-3', metric: SoilMetric.temperature),
+    ),
+  );
+  testWidgets(
     'cows',
     skip: skip,
-    (t) => shot(t, 'cows', const AppShell(initialTab: 2)),
+    (t) => shot(t, 'cows', const AppShell(initialTab: 3)),
   );
   testWidgets(
     'cow-detail',
@@ -102,6 +116,6 @@ void main() {
   testWidgets(
     'settings',
     skip: skip,
-    (t) => shot(t, 'settings', const AppShell(initialTab: 3)),
+    (t) => shot(t, 'settings', const AppShell(initialTab: 4)),
   );
 }

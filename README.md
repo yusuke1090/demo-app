@@ -1,13 +1,16 @@
-# 農場モニター
+# デモアプリ
 
 土の水分や牛の行動など、自作のセンサーの結果をスマホで確認する Android アプリ（Flutter）。
 
+自作の開発物の結果をまとめて試すためのアプリです。使えそうなものは、ここから独立したアプリにしていきます。
+
 **[APK をダウンロード](https://github.com/yusuke1090/farm-monitor/releases/latest/download/farm-monitor.apk)**
 
-![ホーム](docs/screenshots/home.png) ![土の水分](docs/screenshots/soil-detail.png) ![牛の行動](docs/screenshots/cow-detail.png)
+![ホーム](docs/screenshots/home.png) ![土の水分](docs/screenshots/soil-detail.png) ![土の温度](docs/screenshots/temperature-detail.png) ![牛の行動](docs/screenshots/cow-detail.png)
 
 - **ホーム**: 全体の様子と、確認することの一覧
-- **土**: センサーごとの水分と、24時間・7日間の記録
+- **水分**: センサーごとの土の水分と、24時間・7日間の記録
+- **温度**: センサーごとの土の温度と、24時間・7日間の記録
 - **牛**: 今の行動、過去24時間の行動、いつもの活動量との比較、発情・体調の候補
 - **設定**: デモデータと受信機の切り替え
 

@@ -31,7 +31,9 @@
       "battery": 86,
       "updated_at": "2026-11-06T20:58:00+09:00",
       "dry_below": 30,
-      "wet_above": 60
+      "wet_above": 60,
+      "cold_below": 10,
+      "hot_above": 30
     }
   ]
 }
@@ -42,7 +44,8 @@
 | `moisture` | 土の水分（%） |
 | `temperature` | 土の温度（℃）。測らないセンサーは `null` |
 | `battery` | 電池の残り（%） |
-| `dry_below` / `wet_above` | これより下は乾燥、上は過湿 |
+| `dry_below` / `wet_above` | 水分がこれより下は乾燥、上は過湿 |
+| `cold_below` / `hot_above` | 温度がこれより下は低温、上は高温 |
 
 `updated_at` が1時間より古いと、アプリは「通信なし」と表示します。
 
@@ -51,7 +54,9 @@
 ```json
 {
   "sensor": { "id": "soil-1", "...": "/api/soil の1件と同じ" },
-  "history": [{ "time": "2026-11-06T20:00:00+09:00", "moisture": 42.9 }]
+  "history": [
+    { "time": "2026-11-06T20:00:00+09:00", "moisture": 42.9, "temperature": 21.0 }
+  ]
 }
 ```
 
@@ -118,4 +123,4 @@
 }
 ```
 
-`level` は `warning` か `critical`、`kind` は `soil` か `cow` です。`target_id` のセンサーや牛の画面に移動できます。
+`level` は `warning` か `critical`、`kind` は `soil`（水分）、`temperature`（土の温度）、`cow` のどれかです。`target_id` のセンサーや牛の画面に移動できます。

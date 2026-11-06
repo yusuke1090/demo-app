@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""農場モニターの受信機 API を、作り物のデータで動かす開発用サーバー。
+"""デモアプリの受信機 API を、作り物のデータで動かす開発用サーバー。
 
 アプリと受信機のつなぎ込みを確かめるためのもの。実機のラズパイでは、
 同じ形の JSON を SQLite の記録から返すようにする（docs/api.md）。
@@ -16,12 +16,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
 BEHAVIORS = ("rest", "eat", "walk", "ruminate")
+COLD_BELOW = 10
+HOT_ABOVE = 30
 
 SOIL = [
     # id, 名前, 場所, 水分, 温度, 電池, 何分前, 乾燥, 過湿
     ("soil-1", "畑A", "ハウス東", 42.5, 21.3, 86, 2, 30, 60),
     ("soil-2", "畑B", "ハウス西", 24.2, 20.8, 71, 4, 30, 60),
-    ("soil-3", "畑C", "露地 南側", 55.8, 17.6, 64, 7, 30, 60),
+    ("soil-3", "畑C", "露地 南側", 55.8, 8.6, 64, 7, 30, 60),
     ("soil-4", "牧草地", "北の区画", 38.0, None, 12, 180, 25, 55),
 ]
 
@@ -50,7 +52,20 @@ def soil_sensor(spec, now):
         "updated_at": iso(now - timedelta(minutes=ago)),
         "dry_below": dry,
         "wet_above": wet,
+        "cold_below": COLD_BELOW,
+        "hot_above": HOT_ABOVE,
     }
+
+
+def soil_temperature(spec, time, updated):
+    """今の値を基準に、昼に上がり夜に下がる形にする。"""
+    if spec[4] is None:
+        return None
+
+    def wave(t):
+        return 2.5 * math.sin((t.hour - 8) / 24 * 2 * math.pi)
+
+    return round(spec[4] + wave(time) - wave(updated), 1)
 
 
 def soil_history(spec, now, hours):
@@ -59,7 +74,12 @@ def soil_history(spec, now, hours):
     points = []
     for t in range(hours, -1, -1):
         value = moisture if t == 0 else moisture + (t % 72) * 0.2 + 0.6 * math.sin(t * 0.7 + moisture)
-        points.append({"time": iso(updated - timedelta(hours=t)), "moisture": round(value, 1)})
+        time = updated - timedelta(hours=t)
+        points.append({
+            "time": iso(time),
+            "moisture": round(value, 1),
+            "temperature": soil_temperature(spec, time, updated),
+        })
     return points
 
 
@@ -151,6 +171,19 @@ def alerts(now):
             "target_id": sensor["id"],
             "title": f"{sensor['name']}: {title}",
             "message": message,
+            "time": sensor["updated_at"],
+        })
+    for spec in SOIL:
+        sensor = soil_sensor(spec, now)
+        value = sensor["temperature"]
+        if value is None or spec[6] > 60 or COLD_BELOW <= value <= HOT_ABOVE:
+            continue
+        result.append({
+            "level": "warning",
+            "kind": "temperature",
+            "target_id": sensor["id"],
+            "title": f"{sensor['name']}: {'低温' if value < COLD_BELOW else '高温'}",
+            "message": f"{sensor['location']}の土の温度は {value}℃ です",
             "time": sensor["updated_at"],
         })
     return result
