@@ -47,7 +47,7 @@ jobs:
           export FARM_KEYSTORE_PATH="$RUNNER_TEMP/farm-monitor.p12"
           # 番号が増えないと、スマホで更新として扱われない
           flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
-          cp build/app/outputs/flutter-apk/app-release.apk farm-monitor.apk
+          cp build/app/outputs/flutter-apk/app-release.apk demo-app.apk
 
       - name: Publish to the latest release
         env:
@@ -56,4 +56,4 @@ jobs:
           gh release view latest >/dev/null 2>&1 || \
             gh release create latest --title "最新の APK" \
               --notes "main の最新の状態から作った APK です。"
-          gh release upload latest farm-monitor.apk --clobber
+          gh release upload latest demo-app.apk --clobber

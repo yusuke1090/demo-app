@@ -4,7 +4,7 @@
 
 自作の開発物の結果をまとめて試すためのアプリです。使えそうなものは、ここから独立したアプリにしていきます。
 
-**[APK をダウンロード](https://github.com/yusuke1090/farm-monitor/releases/latest/download/farm-monitor.apk)**
+**[APK をダウンロード](https://github.com/yusuke1090/demo-app/releases/latest/download/demo-app.apk)**
 
 ![ホーム](docs/screenshots/home.png) ![土の水分](docs/screenshots/soil-detail.png) ![土の温度](docs/screenshots/temperature-detail.png) ![牛の行動](docs/screenshots/cow-detail.png)
 
@@ -21,7 +21,7 @@
 ## スマホに入れる
 
 1. Android のスマホで上の「APK をダウンロード」を開く（リポジトリが非公開の間は、GitHub にログインしたブラウザで開く）
-2. ダウンロードした `farm-monitor.apk` を開く
+2. ダウンロードした `demo-app.apk` を開く
 3. 「提供元不明のアプリ」の許可を求められたら、ブラウザに許可する
 
 更新するときも、同じ手順で上書きできます。データはアプリを消さない限り残ります。
