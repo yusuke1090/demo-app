@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 双葉の芽と地面。108dp のうち中央 66dp に収める -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,72 L52,52 C52,42 44,35 32,35 C32,47 40,54 50,54 L52,54 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,72 L56,46 C56,36 64,29 76,29 C76,41 68,48 58,48 L56,48 Z" />
+    <path
+        android:fillColor="#C8E6C9"
+        android:pathData="M34,72 L74,72 C74,76 70,79 66,79 L42,79 C38,79 34,76 34,72 Z" />
+</vector>

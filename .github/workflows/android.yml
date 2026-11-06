@@ -1,0 +1,59 @@
+name: Android APK
+
+# main に入るたびに確認して、スマホに入れる APK を作る
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.9"
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      - name: Restore the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.FARM_KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/farm-monitor.p12"
+
+      - name: Build the APK
+        env:
+          FARM_KEYSTORE_PASSWORD: ${{ secrets.FARM_KEYSTORE_PASSWORD }}
+        run: |
+          export FARM_KEYSTORE_PATH="$RUNNER_TEMP/farm-monitor.p12"
+          # 番号が増えないと、スマホで更新として扱われない
+          flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
+          cp build/app/outputs/flutter-apk/app-release.apk farm-monitor.apk
+
+      - name: Publish to the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || \
+            gh release create latest --title "最新の APK" \
+              --notes "main の最新の状態から作った APK です。"
+          gh release upload latest farm-monitor.apk --clobber
