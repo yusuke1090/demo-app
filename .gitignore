@@ -51,3 +51,6 @@ app.*.map.json
 *.p12
 *.jks
 *.keystore
+
+# リリースの zip を展開した Web 版
+/receiver/web/

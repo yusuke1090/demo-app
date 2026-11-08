@@ -1,6 +1,6 @@
-name: Android APK
+name: Build apps
 
-# main に入るたびに確認して、スマホに入れる APK を作る
+# main に入るたびに確認して、Android の APK と iPhone などで使う Web 版を作る
 on:
   push:
     branches: [main]
@@ -49,6 +49,12 @@ jobs:
           flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
           cp build/app/outputs/flutter-apk/app-release.apk demo-app.apk
 
+      - name: Build the web version
+        run: |
+          # CanvasKit を同梱して、ネットにつながらない場所でも画面を出せるようにする
+          flutter build web --release --no-web-resources-cdn
+          (cd build/web && zip -qr ../../demo-app-web.zip .)
+
       - name: Publish to the latest release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -56,4 +62,4 @@ jobs:
           gh release view latest >/dev/null 2>&1 || \
             gh release create latest --title "最新の APK" \
               --notes "main の最新の状態から作った APK です。"
-          gh release upload latest demo-app.apk --clobber
+          gh release upload latest demo-app.apk demo-app-web.zip --clobber

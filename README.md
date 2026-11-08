@@ -4,7 +4,9 @@
 
 自作の開発物の結果をまとめて試すためのアプリです。使えそうなものは、ここから独立したアプリにしていきます。
 
-**[APK をダウンロード](https://github.com/yusuke1090/demo-app/releases/latest/download/demo-app.apk)**
+Android は APK、iPhone などはブラウザで開く Web 版で使います。
+
+**[Android 用の APK をダウンロード](https://github.com/yusuke1090/demo-app/releases/latest/download/demo-app.apk)**
 
 ![ホーム](docs/screenshots/home.png) ![土の水分](docs/screenshots/soil-detail.png) ![土の温度](docs/screenshots/temperature-detail.png) ![牛の行動](docs/screenshots/cow-detail.png)
 
@@ -18,13 +20,35 @@
 
 今はデモデータで動きます。実機の受信機はまだなく、[デモ用のサーバー](receiver/demo_server.py)で接続を確かめられます。
 
-## スマホに入れる
+## Android に入れる
 
-1. Android のスマホで上の「APK をダウンロード」を開く（リポジトリが非公開の間は、GitHub にログインしたブラウザで開く）
+1. Android のスマホで上の「Android 用の APK をダウンロード」を開く（リポジトリが非公開の間は、GitHub にログインしたブラウザで開く）
 2. ダウンロードした `demo-app.apk` を開く
 3. 「提供元不明のアプリ」の許可を求められたら、ブラウザに許可する
 
 更新するときも、同じ手順で上書きできます。データはアプリを消さない限り残ります。
+
+## iPhone で使う（Web 版）
+
+iPhone には APK を入れられないので、同じコードから作った Web 版を Safari で開きます。
+PC（将来は受信機のラズパイ）が、Web 版の画面とデータの両方を配信します。
+
+PC で、最新の Web 版をダウンロードしてサーバーを動かします。
+
+```sh
+cd ~/apps/demo-app
+gh release download latest -p demo-app-web.zip --clobber
+rm -rf receiver/web && mkdir receiver/web && unzip -q demo-app-web.zip -d receiver/web
+python3 receiver/demo_server.py --port 8080
+```
+
+1. iPhone を PC と同じ Wi-Fi につなぐ
+2. Safari で `http://<PC の IP アドレス>:8080` を開く（IP は PC で `hostname -I` を実行すると分かる）
+3. 共有ボタンから「ホーム画面に追加」を押すと、アプリのようにアイコンから開ける
+4. 受信機のデータを見るときは、「設定」の接続先に入っている値のまま「接続する」を押す
+
+- 開けないときは、PC のファイアウォールで 8080 番が閉じていないか確かめる
+- 日本語の文字の形は初めて開くときにネットから読み込むので、初回はインターネットにつながる Wi-Fi で開く
 
 ## しくみ
 
@@ -48,7 +72,7 @@ python3 receiver/demo_server.py --port 8080
 
 ## 開発
 
-`main` にプッシュすると、GitHub Actions が解析とテストをして、APK を作り直します。Android SDK や Mac は手元になくても開発できます。
+`main` にプッシュすると、GitHub Actions が解析とテストをして、APK と Web 版（`demo-app-web.zip`）を作り直します。Android SDK や Mac は手元になくても開発できます。
 
 手元で確かめるときは [Flutter](https://docs.flutter.dev/install) を入れて、次を実行します。
 
@@ -72,9 +96,9 @@ flutter test
 APK は、Actions の secret（`FARM_KEYSTORE_BASE64`、`FARM_KEYSTORE_PASSWORD`）の鍵で署名します。鍵が変わると上書き更新できなくなるので、作り直さないでください。
 控えは手元の `~/.config/farm-monitor/` にあります（リポジトリには入れていません）。
 
-### iPhone 版
+### iPhone のネイティブ版
 
-同じコードから作れますが、`flutter create --platforms ios .` で設定を足して、Mac か macOS の CI でビルドし、Apple Developer Program（有料）で署名する必要があります。
+App Store や TestFlight で配るネイティブ版も同じコードから作れますが、`flutter create --platforms ios .` で設定を足して、Mac か macOS の CI でビルドし、Apple Developer Program（有料）で署名する必要があります。
 
 ## Google Play で公開するには
 

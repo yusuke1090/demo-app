@@ -4,16 +4,28 @@
 アプリと受信機のつなぎ込みを確かめるためのもの。実機のラズパイでは、
 同じ形の JSON を SQLite の記録から返すようにする（docs/api.md）。
 
+Web 版のアプリ（flutter build web の出力）があれば、それも配信する。
+iPhone などのブラウザで http://<この PC の IP>:8080 を開くと使える。
+
     python3 receiver/demo_server.py --port 8080
 """
 
 import argparse
 import json
 import math
+import mimetypes
 import random
+from pathlib import Path
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
+
+ROOT = Path(__file__).resolve().parent.parent
+# 配信する Web 版。リリースの zip を展開した receiver/web か、手元でビルドした build/web
+WEB_DIRS = (ROOT / "receiver" / "web", ROOT / "build" / "web")
+
+mimetypes.add_type("application/wasm", ".wasm")
+mimetypes.add_type("text/javascript", ".mjs")
 
 BEHAVIORS = ("rest", "eat", "walk", "ruminate")
 COLD_BELOW = 10
@@ -219,15 +231,46 @@ def route(path, query, now):
     return None
 
 
+def web_file(web_dir, path):
+    """Web 版のファイルを探す。web_dir の外は返さない。"""
+    if web_dir is None:
+        return None
+    relative = unquote(path).lstrip("/") or "index.html"
+    target = (web_dir / relative).resolve()
+    if not target.is_relative_to(web_dir) or not target.is_file():
+        return None
+    return target
+
+
 class Handler(BaseHTTPRequestHandler):
+    web_dir = None
+
     def do_GET(self):
         url = urlparse(self.path)
-        body = route(url.path, parse_qs(url.query), datetime.now())
-        status = 200 if body is not None else 404
-        data = json.dumps(body if body is not None else {"error": "not found"}, ensure_ascii=False).encode()
+        if url.path.startswith("/api/"):
+            body = route(url.path, parse_qs(url.query), datetime.now())
+            status = 200 if body is not None else 404
+            data = json.dumps(body if body is not None else {"error": "not found"}, ensure_ascii=False).encode()
+            self.send(status, "application/json; charset=utf-8", data)
+            return
+        target = web_file(self.web_dir, url.path)
+        if target is None:
+            if self.web_dir is None and url.path == "/":
+                message = "Web 版がありません。README の「iPhone で使う」を見てください。"
+                self.send(404, "text/plain; charset=utf-8", message.encode())
+            else:
+                self.send(404, "text/plain; charset=utf-8", b"not found")
+            return
+        content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        self.send(200, content_type, target.read_bytes(), cache=target.name != "index.html")
+
+    def send(self, status, content_type, data, cache=False):
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
+        # 別の場所で配信した Web 版からも読めるようにする（同じ Wi-Fi の中で使う前提）
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "max-age=3600" if cache else "no-cache")
         self.end_headers()
         self.wfile.write(data)
 
@@ -236,9 +279,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--web", type=Path, help="配信する Web 版のフォルダ")
     args = parser.parse_args()
+    candidates = (args.web,) if args.web else WEB_DIRS
+    Handler.web_dir = next((d.resolve() for d in candidates if (d / "index.html").is_file()), None)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"http://{args.host}:{server.server_port} で待ち受けています（Ctrl+C で終了）", flush=True)
+    print(f"Web 版: {Handler.web_dir or 'なし（API だけ）'}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

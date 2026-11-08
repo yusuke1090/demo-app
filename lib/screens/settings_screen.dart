@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
@@ -25,6 +26,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!_initialized) {
       _initialized = true;
       _url.text = AppScope.of(context).url;
+      // Web 版は受信機から配信されるので、開いたページの場所を初めの値にする
+      if (_url.text.isEmpty && kIsWeb && Uri.base.scheme.startsWith('http')) {
+        _url.text = Uri.base.origin;
+      }
     }
   }
 
