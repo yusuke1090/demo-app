@@ -26,8 +26,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!_initialized) {
       _initialized = true;
       _url.text = AppScope.of(context).url;
-      // Web 版は受信機から配信されるので、開いたページの場所を初めの値にする
-      if (_url.text.isEmpty && kIsWeb && Uri.base.scheme.startsWith('http')) {
+      // 受信機が配信した Web 版（http）なら、開いたページの場所を初めの値にする
+      if (_url.text.isEmpty && kIsWeb && Uri.base.scheme == 'http') {
         _url.text = Uri.base.origin;
       }
     }
@@ -115,6 +115,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           StatusChipLine(ok: _ok, message: _result!),
         ],
         const SizedBox(height: 24),
+        if (kIsWeb && Uri.base.scheme == 'https') ...[
+          const MutedText(
+            'ネット上の Web 版（https）からは、Wi-Fi の中の受信機（http）にはつなげません。'
+            '受信機のデータは、受信機が配信する Web 版か Android 版で見てください。',
+          ),
+          const SizedBox(height: 8),
+        ],
         const MutedText(
           'スマホと受信機を同じ Wi-Fi につないでください。'
           '受信機の API は、リポジトリの docs/api.md にまとめています。',

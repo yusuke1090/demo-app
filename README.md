@@ -4,9 +4,10 @@
 
 自作の開発物の結果をまとめて試すためのアプリです。使えそうなものは、ここから独立したアプリにしていきます。
 
-Android は APK、iPhone などはブラウザで開く Web 版で使います。
+iPhone などはブラウザで開く Web 版、Android は APK で使います。
 
-**[Android 用の APK をダウンロード](https://github.com/yusuke1090/demo-app/releases/latest/download/demo-app.apk)**
+- **[Web 版を開く](https://yusuke1090.github.io/demo-app/)**（iPhone・PC など。デモデータで動く）
+- **[Android 用の APK をダウンロード](https://github.com/yusuke1090/demo-app/releases/latest/download/demo-app.apk)**
 
 ![ホーム](docs/screenshots/home.png) ![土の水分](docs/screenshots/soil-detail.png) ![土の温度](docs/screenshots/temperature-detail.png) ![牛の行動](docs/screenshots/cow-detail.png)
 
@@ -22,7 +23,7 @@ Android は APK、iPhone などはブラウザで開く Web 版で使います�
 
 ## Android に入れる
 
-1. Android のスマホで上の「Android 用の APK をダウンロード」を開く（リポジトリが非公開の間は、GitHub にログインしたブラウザで開く）
+1. Android のスマホで上の「Android 用の APK をダウンロード」を開く
 2. ダウンロードした `demo-app.apk` を開く
 3. 「提供元不明のアプリ」の許可を求められたら、ブラウザに許可する
 
@@ -31,9 +32,18 @@ Android は APK、iPhone などはブラウザで開く Web 版で使います�
 ## iPhone で使う（Web 版）
 
 iPhone には APK を入れられないので、同じコードから作った Web 版を Safari で開きます。
-PC（将来は受信機のラズパイ）が、Web 版の画面とデータの両方を配信します。
 
-PC で、最新の Web 版をダウンロードしてサーバーを動かします。
+1. Safari で **https://yusuke1090.github.io/demo-app/** を開く
+2. 共有ボタンから「ホーム画面に追加」を押すと、アプリのようにアイコンから開ける
+
+`main` にプッシュすると自動で最新になります。PC の電源が切れていても、どこからでも開けます。
+
+- ネット上の Web 版はデモデータだけを表示する。ブラウザの安全のしくみで、https のページから Wi-Fi の中の受信機（http）は読めないため
+- 日本語の文字の形はネットから読み込むので、インターネットにつながっている必要がある
+
+### 受信機のデータを Web 版で見る
+
+受信機（今は PC、将来はラズパイ）から Web 版を配信すると、同じ Wi-Fi の中で受信機のデータを見られます。この場合は受信機の電源が入っている必要があります。
 
 ```sh
 cd ~/apps/demo-app
@@ -42,13 +52,11 @@ rm -rf receiver/web && mkdir receiver/web && unzip -q demo-app-web.zip -d receiv
 python3 receiver/demo_server.py --port 8080
 ```
 
-1. iPhone を PC と同じ Wi-Fi につなぐ
-2. Safari で `http://<PC の IP アドレス>:8080` を開く（IP は PC で `hostname -I` を実行すると分かる）
-3. 共有ボタンから「ホーム画面に追加」を押すと、アプリのようにアイコンから開ける
-4. 受信機のデータを見るときは、「設定」の接続先に入っている値のまま「接続する」を押す
+1. iPhone を受信機と同じ Wi-Fi につなぐ
+2. Safari で `http://<受信機の IP アドレス>:8080` を開く（IP は受信機で `hostname -I` を実行すると分かる）
+3. 「設定」の接続先に入っている値のまま「接続する」を押す
 
-- 開けないときは、PC のファイアウォールで 8080 番が閉じていないか確かめる
-- 日本語の文字の形は初めて開くときにネットから読み込むので、初回はインターネットにつながる Wi-Fi で開く
+開けないときは、受信機のファイアウォールで 8080 番が閉じていないか確かめる（ufw なら `sudo ufw allow 8080/tcp`）。
 
 ## しくみ
 
@@ -72,7 +80,7 @@ python3 receiver/demo_server.py --port 8080
 
 ## 開発
 
-`main` にプッシュすると、GitHub Actions が解析とテストをして、APK と Web 版（`demo-app-web.zip`）を作り直します。Android SDK や Mac は手元になくても開発できます。
+`main` にプッシュすると、GitHub Actions が解析とテストをして、APK と Web 版（`demo-app-web.zip`）を作り直し、Web 版を GitHub Pages に公開します。Android SDK や Mac は手元になくても開発できます。
 
 手元で確かめるときは [Flutter](https://docs.flutter.dev/install) を入れて、次を実行します。
 

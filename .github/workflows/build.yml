@@ -1,6 +1,7 @@
 name: Build apps
 
-# main に入るたびに確認して、Android の APK と iPhone などで使う Web 版を作る
+# main に入るたびに確認して、Android の APK と iPhone などで使う Web 版を作る。
+# Web 版は GitHub Pages（https://yusuke1090.github.io/demo-app/）にも公開する
 on:
   push:
     branches: [main]
@@ -8,9 +9,11 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
-  group: android-apk
+  group: build-apps
   cancel-in-progress: true
 
 jobs:
@@ -54,6 +57,14 @@ jobs:
           # CanvasKit を同梱して、ネットにつながらない場所でも画面を出せるようにする
           flutter build web --release --no-web-resources-cdn
           (cd build/web && zip -qr ../../demo-app-web.zip .)
+          # Pages では /demo-app/ の下に置くので、基準の場所を書き換えた写しを作る
+          cp -r build/web build/pages
+          sed -i 's#<base href="/">#<base href="/demo-app/">#' build/pages/index.html
+          grep -q '<base href="/demo-app/">' build/pages/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/pages
 
       - name: Publish to the latest release
         env:
@@ -63,3 +74,13 @@ jobs:
             gh release create latest --title "最新の APK" \
               --notes "main の最新の状態から作った APK です。"
           gh release upload latest demo-app.apk demo-app-web.zip --clobber
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
